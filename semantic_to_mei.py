@@ -1,66 +1,123 @@
 #convert a semantic file to an mei file, following to 5.0 version standard
 from enum import Enum
 from music21 import *
+from semantic_obj import *
+import argparse as ap
 
-class note_types(Enum):
-    barline = 1
-    clef = 2
-    gracenote = 3
-    multirest = 4
-    note = 5
-    rest = 6
-    tie = 7
-    timeSignature = 8
-    
-def main():
+semantic_keywords_arr = ["barline", "clef", "gracenote", "multirest", "note", "rest", "tie", "timeSignature"]
+supported_formats = ["mei", "musicxml"]
+
+def semantic_duration_to_music21_duration(semantic_duration):
+    for duration in LENGTHS:
+        if duration in semantic_duration:
+            if duration == "hundred_twenty_eighth":
+                return "128th"
+            elif duration == "sixty_fourth":
+                return "64th"
+            elif duration == "thirty_second":
+                return "32nd"
+            elif duration == "sixteenth":
+                return "16th"
+            elif duration == "double_whole":
+                return "breve"
+            elif duration == "quadruple_whole":
+                return "longa"
+            else:
+                return duration
+    raise Exception("Invalid duration: " + semantic_duration)
+
+def semantic_to_music21_stream(semantic_score):
+    #create a music21 stream
     s = stream.Stream()
-
-    # Clef
-    # To add a clef, you can use the following code:
-    clefG2 = clef.GClef()
-    s.append(clefG2)
-
-    # Gracenote
-    # To add a gracenote, you can use the following code:
-    grace_note = note.Note("F#4", type='quarter', grace=True)
-    s.append(grace_note)
-
-    # Multirest
-    # To add a multirest, you can use the following code:
-    multirest = layout.MultiRest(4)  # Represents a multirest of 4 measures
-    s.append(multirest)
-
-    # Note
-    # You've already added notes correctly in your code.
-    n = note.Note("C4")
-    s.append(n)
-
-    # Rest
-    # To add a rest, you can use the following code:
-    rest = note.Rest()
-    rest.duration.type = 'half'
-    s.append(rest)
-
-    # Tie
-    # To add a tie, you need to create two notes and tie them together:
-    note1 = note.Note("C4")
-    note2 = note.Note("D4")
-    tie = tie.Tie('start')  # Create a tie object
-    note1.tie = tie
-    s.append(note1)
-    s.append(note2)
-
-    # Time Signature
-    # To add a time signature, you can use the following code:
-    ts = meter.TimeSignature('4/4')
-    s.append(ts)
-
-    # Barline
-    # To add a barline, you can use the following code:
-    barline = layout.SystemLayout()
-    barline.rightBarline = bar.Barline(style='light-light')
-    s.append(barline)  
-    s.write('musicxml', 'output.xml')
+    
+    #iterate through the semantic score, and build the music21 stream
+    for word in semantic_score:
+        for keyword in semantic_keywords_arr:
+            if keyword in word:
+                if keyword=="barline":
+                    s.append(layout.SystemLayout())
+                    s[-1].rightBarline = bar.Barline(style='light-light')
+                    
+                elif keyword=="clef":
+                    c = semantic_clef(word)
+                    #set the clef line
+                    if "C" in c.clef:
+                        s.append(clef.CClef())
+                    elif "G" in c.clef:
+                        s.append(clef.GClef())
+                    elif "F" in c.clef:
+                        s.append(clef.FClef())
+                    else:
+                        raise Exception("Invalid clef: " + c.clef)
+                    s[-1].line = c.line
+                    
+                elif keyword =="note" or keyword=="gracenote":
+                    n = semantic_note(word)
+                    m21_note = note.Note()
+                    m21_note.pitch = pitch.Pitch(n.pitch.replace("b", "-"))
+                    m21_note.duration.type = semantic_duration_to_music21_duration(n.length)
+                    
+                    if(n.dot == "single"):
+                        m21_note.duration.dots = 1
+                    elif(n.dot == "double"):
+                        m21_note.duration.dots = 2
+                    elif(n.dot == "none"):
+                        m21_note.duration.dots = 0
+                        
+                    if(n.grace):
+                        m21_note.duration.grace = True
+                        
+                    if(n.fermata):
+                        m21_note.expressions.append(expressions.Fermata())
+                        
+                    s.append(m21_note)
+                elif keyword =="rest":
+                    r = semantic_rest(word)
+                    m21_rest = note.Rest()
+                    m21_rest.duration.type = semantic_duration_to_music21_duration(r.length)
+                    s.append(m21_rest)
+                    
+                elif keyword =="multirest":
+                    mr = semantic_multirest(word)
+                    s.append(layout.MultiRest(mr.length))
+                    
+                elif keyword =="tie":
+                    t = semantic_tie(word)
+                    if t.type == "start":
+                        s[-1].tie = tie.Tie('start')
+                    elif t.type == "stop":
+                        s[-1].tie = tie.Tie('stop')
+                    else:
+                        raise Exception("Invalid tie type: " + t.type)
+                    
+                elif keyword =="timeSignature":
+                    ts = semantic_time_signature(word)
+                    s.append(meter.TimeSignature(ts.time_signature))
+                
+                else:
+                    raise Exception("Unimplemented keyword: " + keyword)
+    return s
+    
+def main(semantic_file, output_type, output):
+    if output_type not in supported_formats:
+        raise Exception("Unsupported output format: " + output_type)
+    
+    #read the semantic file
+    semantic_file = open(semantic_file, "r")
+    s = semantic_to_music21_stream(semantic_file)
+    
+    #write the output file
+    if output_type == "mei":
+        s.write("mei", fp=output)
+    elif output_type == "musicxml":
+        s.write("musicxml", fp=output)
     
 if __name__ == "__main__":
-    main()
+    parser = ap.ArgumentParser(description="Convert a semantic file to an MEI file")
+    parser.add_argument("semantic_file", help="The semantic file to convert")
+    parser.add_argument("-type", "--output_type", help="The type of file to output to. Defaults to MEI.\nFormats: " + str(supported_formats), default="mei")
+    parser.add_argument("-o", "--output", help="The file to output to. Defaults to output.mei", default="output.mei")
+    args = parser.parse_args()
+    main(args.semantic_file, args.output_type, args.output)
+    
+    
