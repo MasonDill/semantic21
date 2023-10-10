@@ -4,7 +4,7 @@ from music21 import *
 from semantic_obj import *
 import argparse as ap
 
-semantic_keywords_arr = ["barline", "clef", "gracenote", "multirest", "note", "rest", "tie", "timeSignature"]
+semantic_keywords_arr = ["barline", "clef", "gracenote", "keySignature", "multirest", "note", "rest", "tie", "timeSignature"]
 supported_formats = ["mei", "musicxml"]
 
 def semantic_duration_to_music21_duration(semantic_duration):
@@ -29,16 +29,14 @@ def semantic_duration_to_music21_duration(semantic_duration):
 def semantic_to_music21_stream(semantic_score):
     #create a music21 stream
     s = stream.Stream()
+    p = []
+    current_measure = stream.Measure(number=1)
     
     #iterate through the semantic score, and build the music21 stream
     for word in semantic_score:
         for keyword in semantic_keywords_arr:
-            if keyword in word:
-                if keyword=="barline":
-                    s.append(layout.SystemLayout())
-                    s[-1].rightBarline = bar.Barline(style='light-light')
-                    
-                elif keyword=="clef":
+            if keyword in word:     
+                if keyword=="clef":
                     c = semantic_clef(word)
                     #set the clef line
                     if "C" in c.clef:
@@ -49,8 +47,14 @@ def semantic_to_music21_stream(semantic_score):
                         s.append(clef.FClef())
                     else:
                         raise Exception("Invalid clef: " + c.clef)
-                    s[-1].line = c.line
+                    s[-1].line = c.clef[-1]
+                elif keyword=="barline":
+                    s.insert(0, current_measure)
+                    s.show("text")
+                    current_measure = stream.Measure(number=current_measure.number + 1)
                     
+                elif keyword =="keySignature":
+                    continue
                 elif keyword =="note" or keyword=="gracenote":
                     n = semantic_note(word)
                     m21_note = note.Note()
@@ -70,12 +74,12 @@ def semantic_to_music21_stream(semantic_score):
                     if(n.fermata):
                         m21_note.expressions.append(expressions.Fermata())
                         
-                    s.append(m21_note)
+                    current_measure.append(m21_note)
                 elif keyword =="rest":
                     r = semantic_rest(word)
                     m21_rest = note.Rest()
                     m21_rest.duration.type = semantic_duration_to_music21_duration(r.length)
-                    s.append(m21_rest)
+                    current_measure.append(m21_rest)
                     
                 elif keyword =="multirest":
                     mr = semantic_multirest(word)
@@ -96,6 +100,8 @@ def semantic_to_music21_stream(semantic_score):
                 
                 else:
                     raise Exception("Unimplemented keyword: " + keyword)
+                
+                break
     return s
     
 def main(semantic_file, output_type, output):
@@ -104,19 +110,30 @@ def main(semantic_file, output_type, output):
     
     #read the semantic file
     semantic_file = open(semantic_file, "r")
-    s = semantic_to_music21_stream(semantic_file)
+    semantic_contents = semantic_file.read().split("\t")
+    semantic_file.close()
+    
+    print(semantic_contents)
+    s = semantic_to_music21_stream(semantic_contents)
     
     #write the output file
     if output_type == "mei":
-        s.write("mei", fp=output)
+        s.write("mei", fp=output+".mei")
     elif output_type == "musicxml":
-        s.write("musicxml", fp=output)
+        s.write("musicxml", fp=output+".xml")
+        
+    #show the output file
+    if args.show:
+        return
+        s.show()
+        
     
 if __name__ == "__main__":
     parser = ap.ArgumentParser(description="Convert a semantic file to an MEI file")
     parser.add_argument("semantic_file", help="The semantic file to convert")
-    parser.add_argument("-type", "--output_type", help="The type of file to output to. Defaults to MEI.\nFormats: " + str(supported_formats), default="mei")
-    parser.add_argument("-o", "--output", help="The file to output to. Defaults to output.mei", default="output.mei")
+    parser.add_argument("-type", "--output_type", help="The type of file to output to. Defaults to MEI.\nFormats: " + str(supported_formats), default="musicxml")
+    parser.add_argument("-o", "--output", help="The file to output to. Defaults to output", default="output")
+    parser.add_argument("--show", help="Show the output file in a music21 window", action="store_true")
     args = parser.parse_args()
     main(args.semantic_file, args.output_type, args.output)
     
