@@ -1,3 +1,21 @@
+from enum import Enum
+
+class keySignature(Enum):
+    AbM = -4
+    AM = 3
+    BbM = -2
+    BM = 5
+    CM = 0
+    CsharpM = 7
+    DbM = -5
+    DM = 2
+    EbM = -3
+    EM = 4
+    FM = 1
+    FsharpM = 6
+    GbM = -6
+    GM = 1
+
 class semantic_command:
     def __init__(self, command, type) -> None:
         self.command = command
@@ -99,3 +117,26 @@ class semantic_tie(semantic_command):
             self.type = "stop"
         else:
             raise Exception("Invalid tie type: " + command)
+
+KEY_SIGNATURES = ("AbM", "AM", "BbM", "BM", "CM", "C#M", "DbM", "DM", "EbM", "EM", "FM", "F#M", "GbM", "GM")
+class semantic_key_signature(semantic_command):
+    def __init__(self, command) -> None:
+        super().__init__(command, "key_signature")
+        self.key_signature = None
+        self.value = None
+        
+        #find the key signature in the command, after the first '-'
+        for key_signature in KEY_SIGNATURES:
+            if key_signature in command:
+                self.key_signature = key_signature
+                break
+        if(self.key_signature == None):
+            raise Exception("Key signature value not found: " + command)
+        
+        #find the value of the key signature with the enum
+        for key in keySignature:
+            if key.name.replace("sharp", "#") == self.key_signature:
+                self.value = key.value
+                break
+        if(self.value == None):
+            raise Exception("Key signature value not found: " + command)

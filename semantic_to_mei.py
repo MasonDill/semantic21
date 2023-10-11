@@ -29,8 +29,8 @@ def semantic_duration_to_music21_duration(semantic_duration):
 def semantic_to_music21_stream(semantic_score):
     #create a music21 stream
     s = stream.Stream()
-    p = []
     current_measure = stream.Measure(number=1)
+    tie_next = False
     
     #iterate through the semantic score, and build the music21 stream
     for word in semantic_score:
@@ -49,12 +49,13 @@ def semantic_to_music21_stream(semantic_score):
                         raise Exception("Invalid clef: " + c.clef)
                     s[-1].line = c.clef[-1]
                 elif keyword=="barline":
-                    s.insert(0, current_measure)
-                    s.show("text")
+                    s.append(current_measure)
                     current_measure = stream.Measure(number=current_measure.number + 1)
                     
                 elif keyword =="keySignature":
-                    continue
+                    ks = semantic_key_signature(word)
+                    current_measure.append(key.KeySignature(ks.value))
+                    
                 elif keyword =="note" or keyword=="gracenote":
                     n = semantic_note(word)
                     m21_note = note.Note()
@@ -74,8 +75,16 @@ def semantic_to_music21_stream(semantic_score):
                     if(n.fermata):
                         m21_note.expressions.append(expressions.Fermata())
                         
+                    if(tie_next):
+                        m21_note.tie = tie.Tie("stop")
+                        tie_next = False
+                    
+                    #turn off padding
+                    m21_note.paddingLeft = 0
+                    m21_note.paddingRight = 0
                     current_measure.append(m21_note)
                 elif keyword =="rest":
+                    print(word)
                     r = semantic_rest(word)
                     m21_rest = note.Rest()
                     m21_rest.duration.type = semantic_duration_to_music21_duration(r.length)
@@ -83,20 +92,24 @@ def semantic_to_music21_stream(semantic_score):
                     
                 elif keyword =="multirest":
                     mr = semantic_multirest(word)
-                    s.append(layout.MultiRest(mr.length))
+                    for i in range(int(mr.length) - 1):
+                        #get the duration of the current measure from the time signature
+                        r = note.Rest("quarter", fullMeasure=True)
+                        current_measure.append(r)
+                        s.append(current_measure)
+                        current_measure = stream.Measure(number=current_measure.number + 1)
+                    r = note.Rest("quarter", fullMeasure=True)
+                    current_measure.append(r)
+                       
                     
                 elif keyword =="tie":
-                    t = semantic_tie(word)
-                    if t.type == "start":
-                        s[-1].tie = tie.Tie('start')
-                    elif t.type == "stop":
-                        s[-1].tie = tie.Tie('stop')
-                    else:
-                        raise Exception("Invalid tie type: " + t.type)
+                    current_measure[-1].tie = tie.Tie("start")
+                    tie_next = True
+                 
                     
                 elif keyword =="timeSignature":
                     ts = semantic_time_signature(word)
-                    s.append(meter.TimeSignature(ts.time_signature))
+                    current_measure.append(meter.TimeSignature(ts.time_signature))
                 
                 else:
                     raise Exception("Unimplemented keyword: " + keyword)
@@ -121,11 +134,11 @@ def main(semantic_file, output_type, output):
         s.write("mei", fp=output+".mei")
     elif output_type == "musicxml":
         s.write("musicxml", fp=output+".xml")
+    
         
     #show the output file
     if args.show:
-        return
-        s.show()
+        s.show("text")
         
     
 if __name__ == "__main__":
