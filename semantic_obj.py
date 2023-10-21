@@ -13,8 +13,8 @@ class keySignature(Enum):
     EM = 4
     FM = 1
     FsharpM = 6
-    GbM = -6
     GM = 1
+    GbM = -6
 
 class semantic_command:
     def __init__(self, command, type) -> None:
@@ -124,7 +124,6 @@ class semantic_key_signature(semantic_command):
         super().__init__(command, "key_signature")
         self.key_signature = None
         self.value = None
-        
         #find the key signature in the command, after the first '-'
         for key_signature in KEY_SIGNATURES:
             if key_signature in command:
@@ -138,5 +137,7 @@ class semantic_key_signature(semantic_command):
             if key.name.replace("sharp", "#") == self.key_signature:
                 self.value = key.value
                 break
+        if(self.key_signature == "GM"):
+            self.value = 1
         if(self.value == None):
             raise Exception("Key signature value not found: " + command)

@@ -115,6 +115,9 @@ def semantic_to_music21_stream(semantic_score):
                     raise Exception("Unimplemented keyword: " + keyword)
                 
                 break
+    if(len(current_measure) > 0):
+        s.append(current_measure)
+
     return s
     
 def main(semantic_file, output_type, output):
