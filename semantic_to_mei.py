@@ -5,7 +5,7 @@ from semantic_obj import *
 import argparse as ap
 
 semantic_keywords_arr = ["barline", "clef", "gracenote", "keySignature", "multirest", "note", "rest", "tie", "timeSignature"]
-supported_formats = ["mei", "musicxml"]
+supported_formats = ["mei", "xml"]
 
 def semantic_duration_to_music21_duration(semantic_duration):
     for duration in LENGTHS:
@@ -129,11 +129,7 @@ def main(semantic_file, output_type, output):
     print(semantic_contents)
     s = semantic_to_music21_stream(semantic_contents)
     
-    #write the output file
-    if output_type == "mei":
-        s.write("mei", fp=output+".mei")
-    elif output_type == "musicxml":
-        s.write("musicxml", fp=output+".xml")
+    s.write("musicxml", fp=output+"." +output_type)
     
         
     #show the output file
