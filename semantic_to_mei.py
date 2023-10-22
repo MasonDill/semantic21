@@ -51,6 +51,7 @@ def semantic_to_music21_stream(semantic_score):
                 elif keyword=="barline":
                     s.append(current_measure)
                     current_measure = stream.Measure(number=current_measure.number + 1)
+                    current_measure.clear()
                     
                 elif keyword =="keySignature":
                     ks = semantic_key_signature(word)
@@ -84,7 +85,6 @@ def semantic_to_music21_stream(semantic_score):
                     m21_note.paddingRight = 0
                     current_measure.append(m21_note)
                 elif keyword =="rest":
-                    print(word)
                     r = semantic_rest(word)
                     m21_rest = note.Rest()
                     m21_rest.duration.type = semantic_duration_to_music21_duration(r.length)
@@ -129,7 +129,6 @@ def main(semantic_file, output_type, output):
     semantic_contents = semantic_file.read().split("\t")
     semantic_file.close()
     
-    print(semantic_contents)
     s = semantic_to_music21_stream(semantic_contents)
     
     s.write("musicxml", fp=output+"." +output_type)
