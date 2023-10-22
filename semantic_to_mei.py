@@ -120,7 +120,7 @@ def semantic_to_music21_stream(semantic_score):
 
     return s
     
-def main(semantic_file, output_type, output):
+def main(semantic_file, output_type, output, title, artist):
     if output_type not in supported_formats:
         raise Exception("Unsupported output format: " + output_type)
     
@@ -131,6 +131,11 @@ def main(semantic_file, output_type, output):
     
     s = semantic_to_music21_stream(semantic_contents)
     
+    #name the output file
+    s.metadata = metadata.Metadata()
+    s.metadata.title = title
+    s.metadata.composer = artist
+
     s.write("musicxml", fp=output+"." +output_type)
     
         
@@ -145,7 +150,9 @@ if __name__ == "__main__":
     parser.add_argument("-type", "--output_type", help="The type of file to output to. Defaults to MEI.\nFormats: " + str(supported_formats), default="musicxml")
     parser.add_argument("-o", "--output", help="The file to output to. Defaults to output", default="output")
     parser.add_argument("--show", help="Show the output file in a music21 window", action="store_true")
+    parser.add_argument("--title", help="The title of the score", default="Untitled")
+    parser.add_argument("--artist", help="The artist of the score", default="Unknown")
     args = parser.parse_args()
-    main(args.semantic_file, args.output_type, args.output)
+    main(args.semantic_file, args.output_type, args.output, args.title, args.artist)
     
     
