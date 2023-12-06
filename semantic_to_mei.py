@@ -4,6 +4,8 @@ from music21 import *
 from semantic_obj import *
 import argparse as ap
 
+SEMANTIC_DELIMITER = "\t"
+
 semantic_keywords_arr = ["barline", "clef", "gracenote", "keySignature", "multirest", "note", "rest", "tie", "timeSignature"]
 supported_formats = ["mei", "xml"]
 
@@ -70,8 +72,8 @@ def semantic_to_music21_stream(semantic_score):
                     elif(n.dot == "none"):
                         m21_note.duration.dots = 0
                         
-                    if(n.grace):
-                        m21_note.duration.grace = True
+                    # if(n.grace):
+                    #     m21_note.duration.grace = True
                         
                     if(n.fermata):
                         m21_note.expressions.append(expressions.Fermata())
@@ -119,16 +121,16 @@ def semantic_to_music21_stream(semantic_score):
         s.append(current_measure)
 
     return s
-    
+
 def main(semantic_file, output_type, output, title, artist):
     if output_type not in supported_formats:
         raise Exception("Unsupported output format: " + output_type)
     
     #read the semantic file
     semantic_file = open(semantic_file, "r")
-    semantic_contents = semantic_file.read().split("\t")
+    semantic_contents = semantic_file.read().split(SEMANTIC_DELIMITER)
     semantic_file.close()
-    
+    print(semantic_contents)
     s = semantic_to_music21_stream(semantic_contents)
     
     #name the output file

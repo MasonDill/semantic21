@@ -103,6 +103,10 @@ class semantic_time_signature(semantic_command):
         if self.time_signature == None:
             raise Exception("Time signature value not found: " + command)
         
+        #TODO: fix this hack
+        if self.time_signature == "C/":
+            self.time_signature = "C"
+        
         
 #TODO: add support for ties
 class semantic_tie(semantic_command):
